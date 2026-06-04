@@ -8,6 +8,8 @@ public class TripResourceFromEntityAssembler {
         return new TripResource(
                 entity.getId(),
                 entity.getBookingId(),
+                entity.getRouteId(),
+                entity.getCampus(),
                 entity.getDriverId(),
                 entity.getStatus().name()
         );

@@ -1,9 +1,7 @@
 package com.uniride.uniridetripsservice.trips.application.internal.commandservices;
 
 import com.uniride.uniridetripsservice.trips.domain.model.aggregates.Trip;
-import com.uniride.uniridetripsservice.trips.domain.model.commands.CompleteTripCommand;
-import com.uniride.uniridetripsservice.trips.domain.model.commands.CreateTripCommand;
-import com.uniride.uniridetripsservice.trips.domain.model.commands.StartTripCommand;
+import com.uniride.uniridetripsservice.trips.domain.model.commands.*;
 import com.uniride.uniridetripsservice.trips.domain.services.TripCommandService;
 import com.uniride.uniridetripsservice.trips.infrastructure.persistence.jpa.repositories.TripRepository;
 import org.springframework.stereotype.Service;
@@ -21,7 +19,16 @@ public class TripCommandServiceImpl implements TripCommandService {
     @Override
     @Transactional
     public Trip handle(CreateTripCommand command) {
-        Trip trip = new Trip(command.bookingId(), command.driverId());
+        Trip trip = new Trip(command.bookingId(), command.routeId(), command.campus(), command.securityCode(), command.passengerIds());
+        return tripRepository.save(trip);
+    }
+
+    @Override
+    @Transactional
+    public Trip handle(AcceptTripCommand command) {
+        Trip trip = tripRepository.findById(command.tripId())
+                .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        trip.acceptTrip(command.driverId());
         return tripRepository.save(trip);
     }
 
@@ -30,8 +37,25 @@ public class TripCommandServiceImpl implements TripCommandService {
     public Trip handle(StartTripCommand command) {
         Trip trip = tripRepository.findById(command.tripId())
                 .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        trip.startTrip(command.securityCode());
+        return tripRepository.save(trip);
+    }
 
-        trip.startTrip();
+    @Override
+    @Transactional
+    public Trip handle(ConfirmArrivalCommand command) {
+        Trip trip = tripRepository.findById(command.tripId())
+                .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        trip.confirmPassengerArrival(command.passengerId());
+        return tripRepository.save(trip);
+    }
+
+    @Override
+    @Transactional
+    public Trip handle(NoShowPassengerCommand command) {
+        Trip trip = tripRepository.findById(command.tripId())
+                .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        trip.markPassengerAsNoShow(command.passengerId());
         return tripRepository.save(trip);
     }
 
@@ -40,8 +64,21 @@ public class TripCommandServiceImpl implements TripCommandService {
     public Trip handle(CompleteTripCommand command) {
         Trip trip = tripRepository.findById(command.tripId())
                 .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
-
         trip.completeTrip();
+
+        Trip savedTrip = tripRepository.save(trip);
+
+        // TODO: (Fase 3) Aquí llamaremos al RestTemplate para enviar el POST a FinanceServiceIntegration
+
+        return savedTrip;
+    }
+
+    @Override
+    @Transactional
+    public Trip handle(CancelTripCommand command) {
+        Trip trip = tripRepository.findById(command.tripId())
+                .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        trip.cancelTrip(command.reason());
         return tripRepository.save(trip);
     }
 }

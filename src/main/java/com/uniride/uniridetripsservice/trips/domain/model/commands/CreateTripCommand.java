@@ -1,4 +1,3 @@
 package com.uniride.uniridetripsservice.trips.domain.model.commands;
-
-public record CreateTripCommand(Long bookingId, Long driverId) {
-}
+import java.util.List;
+public record CreateTripCommand(Long bookingId, Long routeId, String campus, String securityCode, List<Long> passengerIds) {}

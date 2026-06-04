@@ -5,6 +5,12 @@ import com.uniride.uniridetripsservice.trips.interfaces.rest.resources.CreateTri
 
 public class CreateTripCommandFromResourceAssembler {
     public static CreateTripCommand toCommandFromResource(CreateTripRequest resource) {
-        return new CreateTripCommand(resource.bookingId(), resource.driverId());
+        return new CreateTripCommand(
+                resource.bookingId(),
+                resource.routeId(),
+                resource.campus(),
+                resource.securityCode(),
+                resource.passengerIds()
+        );
     }
 }
