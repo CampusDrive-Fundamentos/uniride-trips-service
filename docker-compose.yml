@@ -1,0 +1,17 @@
+﻿version: '3.8'
+
+services:
+  uniride-trips-db:
+    image: postgres:15
+    container_name: uniride-trips-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: uniride_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - trips_data:/var/lib/postgresql/data
+
+volumes:
+  trips_data:

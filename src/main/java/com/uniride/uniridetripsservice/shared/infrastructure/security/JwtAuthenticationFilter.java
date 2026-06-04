@@ -23,7 +23,7 @@ import java.util.ArrayList;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Value("${jwt.secret:UniRide_2026_SecretKey_TripsSvc_9f8d7c6b5a4e3f2g1h0j9k8l7m6n5o4p3}")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
     @Override
