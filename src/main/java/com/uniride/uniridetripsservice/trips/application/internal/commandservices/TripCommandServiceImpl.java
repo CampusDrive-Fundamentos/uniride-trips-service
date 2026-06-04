@@ -3,6 +3,7 @@ package com.uniride.uniridetripsservice.trips.application.internal.commandservic
 import com.uniride.uniridetripsservice.trips.domain.model.aggregates.Trip;
 import com.uniride.uniridetripsservice.trips.domain.model.commands.*;
 import com.uniride.uniridetripsservice.trips.domain.services.TripCommandService;
+import com.uniride.uniridetripsservice.trips.infrastructure.outboundservices.finance.FinanceServiceIntegration;
 import com.uniride.uniridetripsservice.trips.infrastructure.persistence.jpa.repositories.TripRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,15 +12,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class TripCommandServiceImpl implements TripCommandService {
 
     private final TripRepository tripRepository;
+    private final FinanceServiceIntegration financeServiceIntegration;
 
-    public TripCommandServiceImpl(TripRepository tripRepository) {
+    public TripCommandServiceImpl(TripRepository tripRepository, FinanceServiceIntegration financeServiceIntegration) {
         this.tripRepository = tripRepository;
+        this.financeServiceIntegration = financeServiceIntegration;
     }
 
     @Override
     @Transactional
     public Trip handle(CreateTripCommand command) {
-        Trip trip = new Trip(command.bookingId(), command.routeId(), command.campus(), command.securityCode(), command.passengerIds());
+        Trip trip = new Trip(command.bookingId(), command.routeId(), command.campus(), command.securityCode(), command.totalAmount(), command.passengerIds());
         return tripRepository.save(trip);
     }
 
@@ -64,11 +67,11 @@ public class TripCommandServiceImpl implements TripCommandService {
     public Trip handle(CompleteTripCommand command) {
         Trip trip = tripRepository.findById(command.tripId())
                 .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
-        trip.completeTrip();
 
+        trip.completeTrip();
         Trip savedTrip = tripRepository.save(trip);
 
-        // TODO: (Fase 3) Aquí llamaremos al RestTemplate para enviar el POST a FinanceServiceIntegration
+        financeServiceIntegration.reportTripCompletion(savedTrip.getId(), savedTrip.getDriverId(), savedTrip.getTotalAmount());
 
         return savedTrip;
     }

@@ -42,16 +42,21 @@ public class Trip extends AbstractAggregateRoot<Trip> {
 
     private String cancelReason;
 
+    @Column(nullable = false)
+    private Double totalAmount;
+
     @ElementCollection
     private List<TripPassenger> passengers = new ArrayList<>();
 
-    public Trip(Long bookingId, Long routeId, String campus, String securityCode, List<Long> passengerIds) {
+    public Trip(Long bookingId, Long routeId, String campus, String securityCode, Double totalAmount, List<Long> passengerIds) {
         this.bookingId = bookingId;
         this.routeId = routeId;
         this.campus = campus;
         this.securityCode = securityCode;
+        this.totalAmount = totalAmount != null ? totalAmount : 0.0;
         this.status = TripStatus.REQUESTED;
 
+        this.passengers = new ArrayList<>();
         if (passengerIds != null) {
             passengerIds.forEach(id -> this.passengers.add(new TripPassenger(id)));
         }

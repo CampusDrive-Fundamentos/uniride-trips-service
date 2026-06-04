@@ -10,6 +10,7 @@ public class CreateTripCommandFromResourceAssembler {
                 resource.routeId(),
                 resource.campus(),
                 resource.securityCode(),
+                resource.totalAmount(),
                 resource.passengerIds()
         );
     }
