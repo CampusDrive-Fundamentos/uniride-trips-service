@@ -3,6 +3,7 @@ package com.uniride.uniridetripsservice.trips.infrastructure.outboundservices.fi
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -24,23 +25,30 @@ public class FinanceServiceIntegration {
         this.restTemplate = restTemplate;
     }
 
+    private HttpHeaders getAuthHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            String token = attributes.getRequest().getHeader("Authorization");
+            if (token != null && !token.isEmpty()) {
+                headers.set("Authorization", token);
+            }
+        }
+        return headers;
+    }
+
     public void reportTripCompletion(Long tripId, Long driverId, Double totalAmount, String paymentMethod) {
         try {
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            String token = (attributes != null) ? attributes.getRequest().getHeader("Authorization") : "";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", token);
-
             Map<String, Object> payload = new HashMap<>();
             payload.put("tripId", tripId);
             payload.put("driverId", driverId);
             payload.put("totalAmount", totalAmount);
             payload.put("paymentMethod", paymentMethod);
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, getAuthHeaders());
             restTemplate.postForEntity(financeServiceUrl + "/settlements", request, String.class);
+            System.out.println("ÉXITO: Cobro enviado a Finance.");
         } catch (Exception e) {
             System.err.println("ERROR: No se pudo comunicar con Finance: " + e.getMessage());
         }
@@ -48,11 +56,18 @@ public class FinanceServiceIntegration {
 
     public boolean isDriverBlocked(Long driverId) {
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(financeServiceUrl + "/drivers/" + driverId + "/account", Map.class);
-            Map<String, Object> body = response.getBody();
-            return "BLOCKED".equals(body.get("accountStatus"));
+            HttpEntity<String> request = new HttpEntity<>(getAuthHeaders());
+            String targetUrl = financeServiceUrl + "/drivers/" + driverId + "/account";
+
+            ResponseEntity<Map> response = restTemplate.exchange(targetUrl, HttpMethod.GET, request, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String status = (String) response.getBody().get("accountStatus");
+                return "BLOCKED".equalsIgnoreCase(status);
+            }
         } catch (Exception e) {
-            return true;
+            System.err.println("Advertencia: No se pudo verificar la deuda en Finance. " + e.getMessage());
         }
+        return false;
     }
 }
