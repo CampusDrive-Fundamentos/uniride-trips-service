@@ -22,13 +22,17 @@ public class TripCommandServiceImpl implements TripCommandService {
     @Override
     @Transactional
     public Trip handle(CreateTripCommand command) {
-        Trip trip = new Trip(command.bookingId(), command.routeId(), command.campus(), command.securityCode(), command.totalAmount(), command.passengerIds());
+        Trip trip = new Trip(command.bookingId(), command.routeId(), command.campus(), command.securityCode(), command.totalAmount(), command.paymentMethod(), command.passengerIds());
         return tripRepository.save(trip);
     }
 
     @Override
     @Transactional
     public Trip handle(AcceptTripCommand command) {
+        if (financeServiceIntegration.isDriverBlocked(command.driverId())) {
+            throw new IllegalStateException("Taxista bloqueado por deuda. No puede aceptar viajes.");
+        }
+
         Trip trip = tripRepository.findById(command.tripId())
                 .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
         trip.acceptTrip(command.driverId());
@@ -71,7 +75,13 @@ public class TripCommandServiceImpl implements TripCommandService {
         trip.completeTrip();
         Trip savedTrip = tripRepository.save(trip);
 
-        financeServiceIntegration.reportTripCompletion(savedTrip.getId(), savedTrip.getDriverId(), savedTrip.getTotalAmount());
+        // ¡ADIÓS AL "CASH" HARDCODEADO! Ahora lee el método real guardado en BD
+        financeServiceIntegration.reportTripCompletion(
+                savedTrip.getId(),
+                savedTrip.getDriverId(),
+                savedTrip.getTotalAmount(),
+                savedTrip.getPaymentMethod()
+        );
 
         return savedTrip;
     }

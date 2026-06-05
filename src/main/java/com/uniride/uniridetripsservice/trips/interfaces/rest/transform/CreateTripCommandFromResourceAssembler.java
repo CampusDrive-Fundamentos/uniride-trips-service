@@ -11,6 +11,7 @@ public class CreateTripCommandFromResourceAssembler {
                 resource.campus(),
                 resource.securityCode(),
                 resource.totalAmount(),
+                resource.paymentMethod(),
                 resource.passengerIds()
         );
     }

@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -113,9 +115,14 @@ public class TripsController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     private Long getCurrentUserIdFromToken() {
-        String usernameOrId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return Long.parseLong(usernameOrId);
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            Object userId = attributes.getRequest().getAttribute("userId");
+            if (userId != null) {
+                return Long.parseLong(userId.toString());
+            }
+        }
+        throw new IllegalStateException("Usuario no autenticado correctamente");
     }
 }

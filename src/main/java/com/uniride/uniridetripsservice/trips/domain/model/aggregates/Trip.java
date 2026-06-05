@@ -45,15 +45,26 @@ public class Trip extends AbstractAggregateRoot<Trip> {
     @Column(nullable = false)
     private Double totalAmount;
 
+    @Column(nullable = false)
+    private String paymentMethod;
+
     @ElementCollection
     private List<TripPassenger> passengers = new ArrayList<>();
 
-    public Trip(Long bookingId, Long routeId, String campus, String securityCode, Double totalAmount, List<Long> passengerIds) {
+    private TripPassenger findPassenger(Long passengerId) {
+        return this.passengers.stream()
+                .filter(p -> p.getPassengerId().equals(passengerId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Pasajero no pertenece a este viaje"));
+    }
+
+    public Trip(Long bookingId, Long routeId, String campus, String securityCode, Double totalAmount, String paymentMethod, List<Long> passengerIds) {
         this.bookingId = bookingId;
         this.routeId = routeId;
         this.campus = campus;
         this.securityCode = securityCode;
         this.totalAmount = totalAmount != null ? totalAmount : 0.0;
+        this.paymentMethod = paymentMethod != null ? paymentMethod : "CASH";
         this.status = TripStatus.REQUESTED;
 
         this.passengers = new ArrayList<>();
@@ -61,7 +72,6 @@ public class Trip extends AbstractAggregateRoot<Trip> {
             passengerIds.forEach(id -> this.passengers.add(new TripPassenger(id)));
         }
     }
-
 
     public void acceptTrip(Long driverId) {
         if (this.status != TripStatus.REQUESTED) {
@@ -94,27 +104,21 @@ public class Trip extends AbstractAggregateRoot<Trip> {
 
     public void markPassengerAsNoShow(Long passengerId) {
         if (this.status != TripStatus.ACTIVE) {
-            throw new IllegalStateException("El viaje debe estar ACTIVE.");
+            throw new IllegalStateException("El viaje debe estar ACTIVE para registrar No-Show.");
         }
-        TripPassenger passenger = this.passengers.stream()
-                .filter(p -> p.getPassengerId().equals(passengerId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Pasajero no pertenece a este viaje"));
-        passenger.markAsNoShow();
+        TripPassenger p = findPassenger(passengerId);
+        p.markAsNoShow();
     }
 
     public void completeTrip() {
-        if (this.status != TripStatus.ACTIVE) {
-            throw new IllegalStateException("El viaje debe estar ACTIVE para poder completarse.");
-        }
-        boolean allArrived = this.passengers.stream()
-                .filter(p -> !p.isNoShow())
-                .allMatch(TripPassenger::isHasArrived);
+        if (this.status != TripStatus.ACTIVE) throw new IllegalStateException("Viaje no activo");
 
-        if (!allArrived) {
-            throw new IllegalStateException("No se puede completar el viaje. Faltan pasajeros por llegar.");
-        }
+        boolean hayAlumnosPendientes = this.passengers.stream()
+                .anyMatch(p -> !p.isHasArrived() && !p.isNoShow());
 
+        if (hayAlumnosPendientes) {
+            throw new IllegalStateException("No se puede completar: Hay estudiantes que aún no marcan llegada.");
+        }
         this.status = TripStatus.COMPLETED;
     }
 
